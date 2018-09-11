@@ -26,6 +26,34 @@ namespace SourceOutputStreaming
             set { StateFactory.OverwriteOption = value; }
         }
 
+        public string Destination
+        {
+            get { return StateFactory.Destination; }
+            set
+            {
+                var factoryType =
+                    AssemblyManager.FindTypes(typeof(ITimeSeriesStateFactory))
+                        .Where(t =>
+                        {
+                            var ext = t.GetAttribute<FileExtensionAttribute>()?.Extension;
+                            if (ext == null)
+                            {
+                                return false;
+                            }
+                            return value.EndsWith(ext);
+                        })
+                        .FirstOrDefault();
+
+                if (factoryType == null)
+                {
+                    throw new ArgumentException("Unknown file extension: " + value);
+                }
+                StateFactory = (ITimeSeriesStateFactory)Activator.CreateInstance(factoryType);
+                StateFactory.BufferSize = TimeSeriesStateFactory.DEFAULT_BUFFER_SIZE;
+                StateFactory.Destination = value;
+            }
+        }
+
         public ITimeSeriesStateFactory StateFactory
         {
             get;
@@ -65,33 +93,18 @@ namespace SourceOutputStreaming
 
         public static StreamingOutputManager EnableStreaming(RiverSystemScenario scenario, string destinationFilename)
         {
+            StreamingOutputManager streamer;
             if (scenario.PluginDataModels.OfType<StreamingOutputManager>().Any())
             {
-                return scenario.PluginDataModels.OfType<StreamingOutputManager>().First();
+                streamer = scenario.PluginDataModels.OfType<StreamingOutputManager>().First();
             }
-            var streamer = new StreamingOutputManager();
-
-            var factoryType =
-                AssemblyManager.FindTypes(typeof(ITimeSeriesStateFactory))
-                    .Where(t =>
-                    {
-                        var ext = t.GetAttribute<FileExtensionAttribute>()?.Extension;
-                        if (ext == null)
-                        {
-                            return false;
-                        }
-                        return destinationFilename.EndsWith(ext);
-                    })
-                    .FirstOrDefault();
-
-            if (factoryType == null)
+            else
             {
-                throw new ArgumentException("Unknown file extension: " + destinationFilename);
+                streamer = new StreamingOutputManager();
+                scenario.PluginDataModels.Add(streamer);
             }
-            streamer.StateFactory = (ITimeSeriesStateFactory) Activator.CreateInstance(factoryType);
-            streamer.StateFactory.BufferSize = TimeSeriesStateFactory.DEFAULT_BUFFER_SIZE;
-            streamer.StateFactory.Destination = destinationFilename;
-            scenario.PluginDataModels.Add(streamer);
+
+            streamer.Destination = destinationFilename;
             return streamer;
         }
 
