@@ -52,6 +52,8 @@ namespace SourceOutputStreaming
         public void ScenarioRunEnd(RiverSystemScenario scenario)
         {
             StateFactory.AfterRun();
+            scenario.RunManager.CurrentConfiguration.MakeResultTimeSeries =
+                scenario.RunManager.CurrentConfiguration.DefaultMakeResultsTimeSeries;
         }
 
         public void ScenarioAfterStep(RiverSystemScenario scenario, DateTime step)
