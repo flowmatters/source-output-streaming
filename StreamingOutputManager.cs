@@ -68,7 +68,7 @@ namespace SourceOutputStreaming
 
         public void ScenarioInitialise(RiverSystemScenario scenario, RunningConfiguration config)
         {
-            StateFactory.NewRun();
+           StateFactory.NewRun();
 
             scenario.RunManager.CurrentConfiguration.MakeResultTimeSeries = MakeStreamingTimeSeries;
         }

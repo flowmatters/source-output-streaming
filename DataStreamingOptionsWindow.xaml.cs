@@ -1,8 +1,12 @@
-﻿using System.Linq;
+﻿using System;
+using System.ComponentModel;
+using System.Linq;
 using System.Windows;
 using RiverSystem;
 using RiverSystem.Controls.Common.RelativePathLoader;
+using RiverSystem.ManagedExtensions;
 using SourceOutputStreaming;
+using TIME.Management;
 using TIME.ScenarioManagement;
 using RiverSystemConfiguration = RiverSystem.RiverSystemConfiguration;
 
@@ -21,6 +25,7 @@ namespace FlowMatters.Source.HDF5IO
         public int PrecisionIndex { get; set; }
         public int OverwriteIndex { get; set; }
         public RelativePathFileSelectorViewModel RelativePathFileSelectorViewModel { get; set; }
+        private Type[] implementations;
 
         public DataStreamingOptionsWindow(RiverSystemScenario scenario)
         {
@@ -30,9 +35,19 @@ namespace FlowMatters.Source.HDF5IO
 
             var project = scenario.Project;
             var projectIsSaved = !string.IsNullOrEmpty(project.FileName);
-            RelativePathFileSelectorViewModel = new RelativePathFileSelectorViewModel(projectIsSaved, "RunResults.h5",
+            implementations = AssemblyManager.FindTypes(typeof(ITimeSeriesStateFactory)).ToArray();
+            var defaultExtension = implementations.Select(t=>t.GetAttribute<FileExtensionAttribute>()?.Extension).FirstOrDefault(e => e!=null);
+            var filters = implementations.Select(t =>
+            {
+                var ext = t.GetAttribute<FileExtensionAttribute>()?.Extension;
+                var desc = t.GetAttribute<DescriptionAttribute>()?.Description;
+                if ((ext == null) || (desc == null))
+                    return null;
+                return string.Format("{0}|*{1}", desc, ext);
+            }).Where(f => f != null).ToArray();
+            RelativePathFileSelectorViewModel = new RelativePathFileSelectorViewModel(projectIsSaved, "RunResults"+defaultExtension,
                 currentProjectPath: projectIsSaved? project.FullFilename:"",
-                filter:"HDF5 Files|*.h5",
+                filter:string.Join("|",filters),
                 saveSelector:true);
             InitializeComponent();
         }
